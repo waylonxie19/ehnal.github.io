@@ -1,0 +1,308 @@
+/**
+ * scales.js
+ * 量表配置数据模块 - 存储所有量表的配置信息
+ */
+
+/**
+ * 量表配置对象集合
+ * 每个量表都具有统一的配置结构，方便系统处理
+ */
+const scales = {
+
+  /**
+ * Phoenix脓毒症评分量表配置 - 修复后的版本
+ */
+  phoenix: {
+    id: 'phoenix',
+    name: 'Phoenix脓毒症评分',
+    description: '评估儿童脓毒症严重程度及感染性休克风险的工具',
+    type: 'radio',
+    sections: [
+      {
+        id: 'respiratory',
+        title: '呼吸（最高3分）',
+        name: 'respiratory',
+        options: [
+          { value: '0', score: 0, label: 'PaO2/FiO2 ≥400 或 SpO2/FiO2 ≥292', checked: true },
+          { value: '1', score: 1, label: '任何呼吸支持上的 PaO2/FiO2 <400 或 SpO2/FiO2 <292', checked: false },
+          { value: '2', score: 2, label: 'PaO2/FiO2 100-200和IMV 或 SpO2/FiO2 148-220和IMV', checked: false },
+          { value: '3', score: 3, label: 'PaO2/FiO2 <100和IMV 或 SpO2/FiO2 <148和IMV', checked: false }
+        ]
+      },
+      {
+        id: 'vasoactive',
+        title: '心血管 - 血管活性药物（最高2分）',
+        name: 'vasoactive',
+        options: [
+          { value: '0', score: 0, label: '无血管活性药物使用', checked: true },
+          { value: '1', score: 1, label: '使用1种血管活性药物', checked: false },
+          { value: '2', score: 2, label: '使用≥2种血管活性药物', checked: false }
+        ]
+      },
+      {
+        id: 'lactate',
+        title: '心血管 - 乳酸（最高2分）',
+        name: 'lactate',
+        options: [
+          { value: '0', score: 0, label: '<5 mmol/L', checked: true },
+          { value: '1', score: 1, label: '5-10.9 mmol/L', checked: false },
+          { value: '2', score: 2, label: '>10.9 mmol/L', checked: false }
+        ]
+      },
+      {
+        id: 'map',
+        title: '心血管 - 平均动脉压(MAP)（最高2分）',
+        name: 'map',
+        options: [
+          { value: '0', score: 0, label: '正常范围（符合年龄的MAP正常值）', checked: true },
+          { value: '1', score: 1, label: '轻度低于正常（符合年龄的MAP轻度异常）', checked: false },
+          { value: '2', score: 2, label: '显著低于正常（符合年龄的MAP显著异常）', checked: false }
+        ]
+      },
+      {
+        id: 'coagulation',
+        title: '凝血（最高2分）',
+        name: 'coagulation',
+        options: [
+          { value: '0', score: 0, label: '无凝血异常', checked: true },
+          { value: '1', score: 1, label: '单项凝血异常（任一项异常）', checked: false },
+          { value: '2', score: 2, label: '多项凝血异常（两项或更多异常）', checked: false }
+        ]
+      },
+      {
+        id: 'neurologic',
+        title: '神经系统（最高2分）',
+        name: 'neurologic',
+        options: [
+          { value: '0', score: 0, label: 'GCS >10且瞳孔反应正常', checked: true },
+          { value: '1', score: 1, label: 'GCS ≤10', checked: false },
+          { value: '2', score: 2, label: '双侧固定瞳孔', checked: false }
+        ]
+      },
+      // 添加隐藏的心血管状态标记，用于解释判断
+      {
+        id: 'cardiovascular_status',
+        title: '心血管状态（不要修改此项）',
+        name: 'cardiovascular_status',
+        options: [
+          { value: '0', score: 0, label: '无心血管异常', checked: true },
+          { value: '1', score: 0, label: '有心血管异常', checked: false }
+        ]
+      }
+    ],
+    maxScore: 13,
+    calculateScore: (values) => {
+      const respiratory = values.respiratory;
+      const vasoactive = values.vasoactive;
+      const lactate = values.lactate;
+      const map = values.map;
+      const coagulation = values.coagulation;
+      const neurologic = values.neurologic;
+      
+      // 判断心血管是否异常，用于后续解释
+      if (vasoactive > 0 || lactate > 0 || map > 0) {
+        // 设置心血管状态为异常
+        document.querySelector('input[name="cardiovascular_status"][value="1"]').checked = true;
+      } else {
+        // 设置心血管状态为正常
+        document.querySelector('input[name="cardiovascular_status"][value="0"]').checked = true;
+      }
+      
+      return respiratory + vasoactive + lactate + map + coagulation + neurologic;
+    },
+    formatScore: (values, totalScore) => {
+      const cardiovascularScore = values.vasoactive + values.lactate + values.map;
+      
+      return {
+        total: `${totalScore}`,
+        detail: `呼吸: ${values.respiratory}, 心血管: ${cardiovascularScore}, 凝血: ${values.coagulation}, 神经: ${values.neurologic}`
+      };
+    },
+    // 修改解释规则，只使用分数作为参数
+    interpretations: [
+      {
+        condition: (score) => score < 2,
+        risk: '无脓毒症',
+        text: '目前不符合脓毒症诊断标准，但需继续观察感染情况的变化。'
+      },
+      {
+        condition: (score) => {
+          // 获取心血管状态
+          const hasCardiovascularAbnormality = document.querySelector('input[name="cardiovascular_status"][value="1"]').checked;
+          // 如果分数>=2且无心血管异常，则为脓毒症
+          return score >= 2 && !hasCardiovascularAbnormality;
+        },
+        risk: '脓毒症',
+        text: '符合脓毒症诊断标准（疑似感染且评分≥2分）。需要启动脓毒症处理流程。'
+      },
+      {
+        condition: (score) => {
+          // 获取心血管状态
+          const hasCardiovascularAbnormality = document.querySelector('input[name="cardiovascular_status"][value="1"]').checked;
+          // 如果分数>=2且有心血管异常，则为感染性休克
+          return score >= 2 && hasCardiovascularAbnormality;
+        },
+        risk: '脓毒症休克',
+        text: '符合脓毒症休克诊断标准（脓毒症伴≥1个心血管点）。需要立即进行积极治疗。'
+      }
+    ]
+  },
+
+  /**
+   * STOP-BANG评分量表配置
+   */
+  stopbang: {
+    id: 'stopbang',
+    name: 'STOP-BANG评分',
+    description: '用于评估阻塞性睡眠呼吸暂停综合征风险的工具',
+    type: 'checkbox',
+    sections: [
+      {
+        id: 'factors',
+        title: '风险因素',
+        name: 'stopbang',
+        options: [
+          { value: 'snoring', score: 1, label: '打鼾 (响亮到能透过关闭的房门听到)', checked: false },
+          { value: 'tired', score: 1, label: '白天易疲劳、嗜睡', checked: false },
+          { value: 'observed', score: 1, label: '有人观察到您睡眠时呼吸暂停', checked: false },
+          { value: 'pressure', score: 1, label: '高血压或正在接受高血压治疗', checked: false },
+          { value: 'bmi', score: 1, label: 'BMI > 35 kg/m²', checked: false },
+          { value: 'age', score: 1, label: '年龄 > 50岁', checked: false },
+          { value: 'neck', score: 1, label: '颈围 > 40 cm', checked: false },
+          { value: 'gender', score: 1, label: '性别为男性', checked: false }
+        ]
+      }
+    ],
+    maxScore: 8,
+    // 计算总分的函数
+    calculateScore: (values) => {
+      return values.reduce((total, item) => total + item, 0);
+    },
+    // 计算特定格式的分数显示
+    formatScore: (values, totalScore) => {
+      return {
+        total: `${totalScore}/8`,
+        detail: ''
+      };
+    },
+    // 解释规则
+    interpretations: [
+      {
+        condition: (score) => score <= 2,
+        risk: '低风险',
+        text: '阻塞性睡眠呼吸暂停风险低'
+      },
+      {
+        condition: (score) => score >= 3 && score <= 4,
+        risk: '中风险',
+        text: '阻塞性睡眠呼吸暂停风险中等'
+      },
+      {
+        condition: (score) => score >= 5 && score <= 6,
+        risk: '高风险',
+        text: '阻塞性睡眠呼吸暂停风险高'
+      },
+      {
+        condition: (score) => score >= 7,
+        risk: '极高风险',
+        text: '阻塞性睡眠呼吸暂停风险极高'
+      }
+    ]
+  },
+
+    /**
+   * CHA₂DS₂-VASc评分量表配置
+   */
+  
+  // chads: {
+  //   id: 'chads',
+  //   name: 'CHA₂DS₂-VASc评分',
+  //   description: '用于评估房颤患者卒中风险的评分系统',
+  //   type: 'checkbox',
+  //   sections: [
+  //     {
+  //       id: 'factors',
+  //       title: '风险因素',
+  //       name: 'chads',
+  //       options: [
+  //         { value: 'chf', score: 1, label: '充血性心力衰竭/左心室功能不全 (1分)', checked: false },
+  //         { value: 'htn', score: 1, label: '高血压 (1分)', checked: false },
+  //         { value: 'age75', score: 2, label: '年龄 ≥ 75岁 (2分)', checked: false },
+  //         { value: 'diabetes', score: 1, label: '糖尿病 (1分)', checked: false },
+  //         { value: 'stroke', score: 2, label: '卒中/TIA/血栓栓塞史 (2分)', checked: false },
+  //         { value: 'vascular', score: 1, label: '血管疾病 (1分)', checked: false },
+  //         { value: 'age65', score: 1, label: '年龄 65-74岁 (1分)', checked: false },
+  //         { value: 'female', score: 1, label: '性别为女性 (1分)', checked: false }
+  //       ]
+  //     }
+  //   ],
+  //   maxScore: 9,
+  //   // 计算总分的函数
+  //   calculateScore: (values) => {
+  //     return values.reduce((total, item) => total + item, 0);
+  //   },
+  //   // 计算特定格式的分数显示
+  //   formatScore: (values, totalScore) => {
+  //     return {
+  //       total: `${totalScore}/9`,
+  //       detail: ''
+  //     };
+  //   },
+  //   // 解释规则
+  //   interpretations: [
+  //     {
+  //       condition: (score) => score === 0,
+  //       risk: '低风险',
+  //       text: '每年卒中风险 < 1%'
+  //     },
+  //     {
+  //       condition: (score) => score === 1,
+  //       risk: '低-中风险',
+  //       text: '每年卒中风险约 1.3%'
+  //     },
+  //     {
+  //       condition: (score) => score === 2,
+  //       risk: '中风险',
+  //       text: '每年卒中风险约 2.2%'
+  //     },
+  //     {
+  //       condition: (score) => score === 3,
+  //       risk: '中-高风险',
+  //       text: '每年卒中风险约 3.2%'
+  //     },
+  //     {
+  //       condition: (score) => score === 4,
+  //       risk: '高风险',
+  //       text: '每年卒中风险约 4.0%'
+  //     },
+  //     {
+  //       condition: (score) => score === 5,
+  //       risk: '高风险',
+  //       text: '每年卒中风险约 6.7%'
+  //     },
+  //     {
+  //       condition: (score) => score === 6,
+  //       risk: '高风险',
+  //       text: '每年卒中风险约 9.8%'
+  //     },
+  //     {
+  //       condition: (score) => score === 7,
+  //       risk: '高风险',
+  //       text: '每年卒中风险约 9.6%'
+  //     },
+  //     {
+  //       condition: (score) => score === 8,
+  //       risk: '高风险',
+  //       text: '每年卒中风险约 6.7%'
+  //     },
+  //     {
+  //       condition: (score) => score >= 9,
+  //       risk: '极高风险',
+  //       text: '每年卒中风险约 15.2%'
+  //     }
+  //   ]
+  // },
+
+};
+
+export default scales;
