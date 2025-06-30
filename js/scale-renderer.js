@@ -81,26 +81,38 @@ class ScaleRenderer {
    * @param {Object} section - 表单部分配置
    * @param {HTMLElement} container - 选项容器
    */
-  renderOptions(scaleConfig, section, container) {
-    const inputType = scaleConfig.type === 'radio' ? 'radio' : 'checkbox';
-    
-    section.options.forEach(option => {
+ renderOptions(scaleConfig, section, container) {
+  section.options.forEach(option => {
+    if (option.input) {
+      // 如果是输入框类型（例如年龄、肌酐），渲染 <input>
       const label = document.createElement('label');
-      
-      label.innerHTML = `
-        <input 
-          type="${inputType}" 
-          name="${section.name}" 
-          value="${option.value}" 
-          data-score="${option.score}"
-          ${option.checked ? 'checked' : ''}
-        >
-        <span>${option.label}</span>
-      `;
-      
+      label.innerHTML = `${option.label}: <input 
+        type="${option.inputType || 'text'}"
+        name="${option.name}"
+        ${option.step ? `step='${option.step}'` : ''}
+        ${option.min ? `min='${option.min}'` : ''}
+      >`;
       container.appendChild(label);
-    });
-  }
+      return; // 继续下一个 option
+    }
+
+    // 否则是默认的 radio / checkbox
+    const inputType = scaleConfig.type === 'radio' ? 'radio' : 'checkbox';
+    const label = document.createElement('label');
+    label.innerHTML = `
+      <input 
+        type="${inputType}" 
+        name="${section.name}" 
+        value="${option.value}" 
+        data-score="${option.score}"
+        ${option.checked ? 'checked' : ''}
+      >
+      <span>${option.label}</span>
+    `;
+    container.appendChild(label);
+  });
+}
+
   
   /**
    * 更新量表结果显示

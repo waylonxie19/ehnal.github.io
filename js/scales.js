@@ -175,9 +175,11 @@ const scales = {
     ],
     maxScore: 8,
     // 计算总分的函数
-    calculateScore: (values) => {
-      return values.reduce((total, item) => total + item, 0);
-    },
+   calculateScore: (values) => {
+  const selected = values.factors || [];
+  return Array.isArray(selected) ? selected.reduce((sum, item) => sum + item, 0) : 0;
+}
+,
     // 计算特定格式的分数显示
     formatScore: (values, totalScore) => {
       return {
@@ -209,6 +211,84 @@ const scales = {
       }
     ]
   },
+
+
+gfr: {
+  id: 'gfr',
+  name: 'GFR估算（2021 CKD-EPI）',
+  description: '根据年龄、性别和血清肌酐估算肾小球滤过率（eGFR）',
+  type: 'radio',  
+  maxScore: 150,
+  sections: [
+    {
+      id: 'sex',
+      title: '性别',
+      name: 'sex',
+      options: [
+        { value: 'male', score: 0, label: '男性', checked: true },
+        { value: 'female', score: 0, label: '女性' }
+      ]
+    },
+    {
+      id: 'age',
+      title: '年龄（岁）',
+      name: 'age',
+      options: [
+        { input: true, label: '请输入年龄', name: 'age', inputType: 'number', min: 1 }
+      ]
+    },
+    {
+      id: 'scr',
+      title: '血清肌酐 Scr (mg/dL)',
+      name: 'scr',
+      options: [
+        { input: true, label: '请输入肌酐', name: 'scr', inputType: 'number', step: '0.01', min: 0 }
+      ]
+    }
+  ],
+  calculateScore: (values) => {
+  const age = parseFloat(values.age);
+  const scr = parseFloat(values.scr);
+  const sex = values.sex;
+
+  if (isNaN(age) || isNaN(scr)) return 0;
+
+  let A = sex === 'female' ? 0.7 : 0.9;
+  let B = sex === 'female'
+    ? (scr <= 0.7 ? -0.241 : -1.2)
+    : (scr <= 0.9 ? -0.302 : -1.2);
+  let factor = sex === 'female' ? 1.012 : 1;
+
+  return 142 * Math.pow(scr / A, B) * Math.pow(0.9938, age) * factor;
+},
+
+  formatScore: (values, total) => ({
+    total: total.toFixed(1),
+    detail: `年龄: ${values.age} 岁, Scr: ${values.scr} mg/dL`
+  }),
+  interpretations: [
+    {
+      condition: score => score >= 90,
+      risk: '正常或高',
+      text: '肾功能正常'
+    },
+    {
+      condition: score => score >= 60 && score < 90,
+      risk: '轻度下降',
+      text: '建议随访'
+    },
+    {
+      condition: score => score >= 30 && score < 60,
+      risk: '中度下降',
+      text: '需关注慢性肾病'
+    },
+    {
+      condition: score => score < 30,
+      risk: '重度下降',
+      text: '请尽快就医'
+    }
+  ]
+}
 
     /**
    * CHA₂DS₂-VASc评分量表配置
