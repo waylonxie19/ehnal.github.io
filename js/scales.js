@@ -8,6 +8,35 @@
  * 每个量表都具有统一的配置结构，方便系统处理
  */
 const scales = {
+/**
+ * 评分计算函数
+ *
+ * 本函数接收 values 对象，该对象由 controller 统一生成，
+ * 所有值均为字符串类型（即使 input 是数字、radio 是数值）。
+ *
+ * 为确保计算准确，开发者应根据实际字段用途进行显式类型转换：
+ *
+ * - 对于数字型字段（如打分项、年龄、Scr 等）：
+ *     使用 parseInt(values.xxx) 或 parseFloat(values.xxx)
+ *
+ * - 对于枚举型/字符串型字段（如性别 male/female、危险等级 low/mid/high）：
+ *     保留原始字符串，不进行转换
+ *
+ * - 可选添加 NaN 安全检查，以防用户未输入：
+ *     if (isNaN(val)) return 0;
+ *
+ * 示例：
+ *   const age = parseFloat(values.age);
+ *   const scr = parseFloat(values.scr);
+ *   const sex = values.sex; // 字符串类型，保留不变
+ *
+ * ⚠️ 不要假设 controller 会为你自动转换数据类型。
+ *    所有数值计算请在本函数中手动完成类型转换。
+ */
+
+
+
+
 
   /**
  * Phoenix脓毒症评分量表配置 - 修复后的版本
@@ -92,12 +121,12 @@ const scales = {
     ],
     maxScore: 13,
     calculateScore: (values) => {
-      const respiratory = values.respiratory;
-      const vasoactive = values.vasoactive;
-      const lactate = values.lactate;
-      const map = values.map;
-      const coagulation = values.coagulation;
-      const neurologic = values.neurologic;
+     const respiratory = parseInt(values.respiratory) || 0;
+  const vasoactive = parseInt(values.vasoactive) || 0;
+  const lactate = parseInt(values.lactate) || 0;
+  const map = parseInt(values.map) || 0;
+  const coagulation = parseInt(values.coagulation) || 0;
+  const neurologic = parseInt(values.neurologic) || 0;
       
       // 判断心血管是否异常，用于后续解释
       if (vasoactive > 0 || lactate > 0 || map > 0) {
@@ -111,7 +140,7 @@ const scales = {
       return respiratory + vasoactive + lactate + map + coagulation + neurologic;
     },
     formatScore: (values, totalScore) => {
-      const cardiovascularScore = values.vasoactive + values.lactate + values.map;
+      const cardiovascularScore = parseInt(values.vasoactive)+ parseInt(values.lactate) + parseInt(values.map);
       
       return {
         total: `${totalScore}`,
